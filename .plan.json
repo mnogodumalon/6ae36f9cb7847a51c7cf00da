@@ -1,0 +1,402 @@
+{
+  "version": 1,
+  "language": "de",
+  "understanding": {
+    "summary": "Die Anwendung hilft Ihnen, Termine mit internen und externen Teilnehmern abzustimmen. Sie legen eine Terminabstimmung mit mehreren Terminvorschlägen an und laden Teilnehmer ein. Deren Rückmeldungen (Ja, Wenn nötig, Nein) werden ausgewertet. Danach legen Sie den finalen Termin fest und stellen eine Kalenderdatei (.ics) bereit.",
+    "roles": [
+      "Organisator",
+      "Teilnehmer (nur über persönlichen Link, außerhalb der Plattform)",
+      "Interne Mitarbeiter mit Einsicht in die Auswertung"
+    ],
+    "main_tasks": [
+      "Terminabstimmung mit Terminvorschlägen und Teilnehmern anlegen",
+      "Teilnehmer einladen und bei fehlender Antwort erinnern",
+      "Rückmeldungen auswerten und Termine bewerten",
+      "Finalen Termin festlegen und Bestätigung samt Kalenderdatei bereitstellen",
+      "Abstimmung absagen oder archivieren"
+    ],
+    "platform_roles": [
+      {
+        "persona": "Organisator",
+        "role": "datenverarbeitung",
+        "apps": [
+          "terminabstimmungen",
+          "terminvorschlaege",
+          "teilnehmer",
+          "rueckmeldungen",
+          "alternative_terminvorschlaege"
+        ]
+      },
+      {
+        "persona": "Interne Mitarbeiter mit Einsicht in die Auswertung",
+        "role": "standard",
+        "apps": [
+          "terminabstimmungen",
+          "terminvorschlaege",
+          "rueckmeldungen",
+          "teilnehmer"
+        ]
+      }
+    ]
+  },
+  "flows": [
+    {
+      "slug": "terminabstimmung-anlegen",
+      "label": {
+        "de": "Terminabstimmung anlegen",
+        "en": "Create scheduling poll"
+      },
+      "description": "Der Organisator legt eine Terminabstimmung mit Terminvorschlägen und Teilnehmern in einem Zug an.",
+      "priority": "must",
+      "writes": [
+        {
+          "entity": "terminabstimmungen",
+          "op": "create",
+          "when": "always",
+          "fields": {
+            "titel": "user",
+            "beschreibung": "user",
+            "organisator_vorname": "user",
+            "organisator_nachname": "user",
+            "organisator_email": "user",
+            "standarddauer_minuten": "user",
+            "ort": "user",
+            "online_meeting_link": "user",
+            "zeitzone": "user",
+            "antwortfrist": "user",
+            "entscheidungsregel": "user",
+            "status": "fixed:entwurf",
+            "finaler_terminvorschlag": "picked"
+          },
+          "needs": {}
+        },
+        {
+          "entity": "terminvorschlaege",
+          "op": "create",
+          "when": "always",
+          "fields": {
+            "terminabstimmung": "picked",
+            "startzeit": "user",
+            "endzeit": "user",
+            "ort_abweichend": "user",
+            "meeting_link_abweichend": "user",
+            "reihenfolge": "user",
+            "final_gewaehlt": "fixed:false"
+          },
+          "needs": {}
+        },
+        {
+          "entity": "teilnehmer",
+          "op": "create",
+          "when": "always",
+          "fields": {
+            "terminabstimmung": "picked",
+            "vorname": "user",
+            "nachname": "user",
+            "email": "user",
+            "organisation": "user",
+            "rolle": "user",
+            "zugriffstoken": "derived:computed:Langer, zufälliger, nicht erratbarer Zeichenwert, der nicht aus Name, E-Mail oder laufender Nummer besteht",
+            "einladungsstatus": "fixed:nicht_versendet",
+            "teilnahme_abgesagt": "fixed:false"
+          },
+          "needs": {}
+        }
+      ],
+      "required": [
+        "teilnehmer.zugriffstoken",
+        "terminabstimmungen.beschreibung",
+        "terminabstimmungen.finaler_terminvorschlag",
+        "terminabstimmungen.online_meeting_link",
+        "terminabstimmungen.organisator_email",
+        "terminabstimmungen.ort",
+        "terminabstimmungen.titel",
+        "terminabstimmungen.zeitzone"
+      ],
+      "brief": "# Flow `terminabstimmung-anlegen` — Terminabstimmung anlegen\nDer Organisator legt eine Terminabstimmung mit Terminvorschlägen und Teilnehmern in einem Zug an.\n\n## Your hook — import it, never rebuild what it owns\n`import { useTerminabstimmungAnlegenFlow } from '@/lib/journey/flows/TerminabstimmungAnlegen';` — generated from the Schreibliste below. It OWNS the form(s), one record search per picked field (columns and filter from the plan) and the submit plan with every fixed and derived value. You compose: `flow.forms.<entity>` for <Bound>/<Field>, `{...flow.picks.<field>.select} {...flow.pick('<field>')}` (or `flow.pickMany` for a multi pick) for <EntitySelectStep>, `flow.validateStep(n)` in StepNav.onNext, `flow.submit` + `flow.formList` for SummaryStep/SuccessStep, `flow.reset()`; what the hook does not own reads through its door `flow.port` — availability `useOccupancy(flow.port, '<entity>', { resource })`, a count `useRecordCount(flow.port, …)` — never import servicePort next to the hook. Options: `steps` (field → step), `items` (how a hit reads, per pick: finaler_terminvorschlag, terminabstimmung, terminabstimmung), `initial`, `messages`, and `compute` — REQUIRED, the plan leaves these rules to you: zugriffstoken. The hook's docblock in .lane-context.md shows the exact call. Never import servicePort, useStepForm, useJourneySubmit, useRecordSearch or useDashboardData in this page — check-intents refuses a page that uses the hook and any of them.\n\n## Steps (in this order)\n1. Grunddaten der Terminabstimmung erfassen\n2. Terminvorschläge mit Start und Ende hinzufügen\n3. Teilnehmer mit Name, E-Mail und Rolle hinzufügen\n4. Als Entwurf speichern\n\n## Schreibliste — the ONLY writes this flow makes (the gate compares your plan steps with this list)\n- creates `terminabstimmungen`:\n    - `titel`: the user enters it (bind it through the layer: form.field/…) — **REQUIRED in this flow** (mark it required and validate it before the step advances, whatever the app's base view says): tool `ics-datei-erzeugen` → `ics_datei` cannot be built without it\n    - `beschreibung`: the user enters it (bind it through the layer: form.field/…) — **REQUIRED in this flow** (mark it required and validate it before the step advances, whatever the app's base view says): tool `ics-datei-erzeugen` → `ics_datei` cannot be built without it\n    - `organisator_vorname`: the user enters it (bind it through the layer: form.field/…)\n    - `organisator_nachname`: the user enters it (bind it through the layer: form.field/…)\n    - `organisator_email`: the user enters it (bind it through the layer: form.field/…) — **REQUIRED in this flow** (mark it required and validate it before the step advances, whatever the app's base view says): tool `ics-datei-erzeugen` → `ics_datei` cannot be built without it\n    - `standarddauer_minuten`: the user enters it (bind it through the layer: form.field/…)\n    - `ort`: the user enters it (bind it through the layer: form.field/…) — **REQUIRED in this flow** (mark it required and validate it before the step advances, whatever the app's base view says): tool `ics-datei-erzeugen` → `ics_datei` cannot be built without it\n    - `online_meeting_link`: the user enters it (bind it through the layer: form.field/…) — **REQUIRED in this flow** (mark it required and validate it before the step advances, whatever the app's base view says): tool `ics-datei-erzeugen` → `ics_datei` cannot be built without it\n    - `zeitzone`: the user enters it (bind it through the layer: form.field/…) — **REQUIRED in this flow** (mark it required and validate it before the step advances, whatever the app's base view says): tool `ics-datei-erzeugen` → `ics_datei` cannot be built without it\n    - `antwortfrist`: the user enters it (bind it through the layer: form.field/…)\n    - `entscheidungsregel`: the user enters it (bind it through the layer: form.field/…)\n    - `status`: fixed value `entwurf` — set it in the plan step's values, never ask\n    - `finaler_terminvorschlag`: from the record the user picks in this flow — **REQUIRED in this flow** (mark it required and validate it before the step advances, whatever the app's base view says): tool `ics-datei-erzeugen` → `ics_datei` cannot be built without it\n- creates `terminvorschlaege`:\n    - `terminabstimmung`: from the record the user picks in this flow\n    - `startzeit`: the user enters it (bind it through the layer: form.field/…)\n    - `endzeit`: the user enters it (bind it through the layer: form.field/…)\n    - `ort_abweichend`: the user enters it (bind it through the layer: form.field/…)\n    - `meeting_link_abweichend`: the user enters it (bind it through the layer: form.field/…)\n    - `reihenfolge`: the user enters it (bind it through the layer: form.field/…)\n    - `final_gewaehlt`: fixed value `false` — set it in the plan step's values, never ask\n- creates `teilnehmer`:\n    - `terminabstimmung`: from the record the user picks in this flow\n    - `vorname`: the user enters it (bind it through the layer: form.field/…)\n    - `nachname`: the user enters it (bind it through the layer: form.field/…)\n    - `email`: the user enters it (bind it through the layer: form.field/…)\n    - `organisation`: the user enters it (bind it through the layer: form.field/…)\n    - `rolle`: the user enters it (bind it through the layer: form.field/…)\n    - `zugriffstoken`: derived (computed) — **REQUIRED in this flow** (mark it required and validate it before the step advances, whatever the app's base view says): tool `abstimmungslink-erzeugen` → `abstimmungslink` cannot be built without it\n    - `einladungsstatus`: fixed value `nicht_versendet` — set it in the plan step's values, never ask\n    - `teilnahme_abgesagt`: fixed value `false` — set it in the plan step's values, never ask\n\n## Checks BEFORE the write (block the submit with the message when they fail)\n- custom (from=`terminvorschlaege.startzeit`, to=`terminvorschlaege.endzeit`) — message: „Das Ende muss nach dem Start liegen.“\n- unique (field=`teilnehmer.email`, scope=`teilnehmer.terminabstimmung`) — message: „Diese E-Mail-Adresse ist in der Abstimmung schon vorhanden.“\n\n## Success page\n- shows: `terminabstimmungen.titel`, `terminabstimmungen.status`\n- next flows to offer: `abstimmung-versenden`\n\n## Never write these — another flow or a tool owns them\n- `teilnehmer.einladung_versendet_am` (owner: intent `abstimmung-versenden`)\n- `terminabstimmungen.festgelegt_am` (owner: intent `termin-festlegen`)\n- `terminabstimmungen.entscheidungskommentar` (owner: intent `termin-festlegen`)\n- `terminabstimmungen.bestaetigung_sofort_senden` (owner: intent `termin-festlegen`)\n- `terminabstimmungen.abgesagt_am` (owner: intent `abstimmung-absagen`)\n- `terminabstimmungen.abstimmungsnummer` (owner: tool `abstimmungsnummer-vergeben`)\n- `teilnehmer.abstimmungslink` (owner: tool `abstimmungslink-erzeugen`)\n- `terminvorschlaege.anzahl_ja` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_wenn_noetig` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_nein` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_ohne_antwort` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_pflichtteilnehmer_ja` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.eignung` (owner: tool `rueckmeldungen-zaehlen`)\n- `teilnehmer.geantwortet_am` (owner: tool `antwort-beim-teilnehmer-vermerken`)\n- `terminabstimmungen.ics_datei` (owner: tool `ics-datei-erzeugen`)\n- `terminabstimmungen.ics_sequenz` (owner: tool `ics-datei-erzeugen`)\n"
+    },
+    {
+      "slug": "abstimmung-versenden",
+      "label": {
+        "de": "Abstimmung versenden",
+        "en": "Send poll"
+      },
+      "description": "Der Organisator versendet eine Abstimmung, sobald mindestens ein Terminvorschlag und ein Teilnehmer vorhanden sind.",
+      "priority": "must",
+      "writes": [
+        {
+          "entity": "terminabstimmungen",
+          "op": "update",
+          "when": "always",
+          "fields": {
+            "status": "fixed:versendet"
+          },
+          "needs": {}
+        },
+        {
+          "entity": "teilnehmer",
+          "op": "update",
+          "when": "always",
+          "fields": {
+            "einladungsstatus": "fixed:versendet",
+            "einladung_versendet_am": "derived:now"
+          },
+          "needs": {}
+        }
+      ],
+      "required": [],
+      "brief": "# Flow `abstimmung-versenden` — Abstimmung versenden\nDer Organisator versendet eine Abstimmung, sobald mindestens ein Terminvorschlag und ein Teilnehmer vorhanden sind.\n\n## Your hook — import it, never rebuild what it owns\n`import { useAbstimmungVersendenFlow } from '@/lib/journey/flows/AbstimmungVersenden';` — generated from the Schreibliste below. It OWNS the form(s), one record search per picked field (columns and filter from the plan) and the submit plan with every fixed and derived value. You compose: `flow.forms.<entity>` for <Bound>/<Field>, `{...flow.picks.<field>.select} {...flow.pick('<field>')}` (or `flow.pickMany` for a multi pick) for <EntitySelectStep>, `flow.validateStep(n)` in StepNav.onNext, `flow.submit` + `flow.formList` for SummaryStep/SuccessStep, `flow.reset()`; what the hook does not own reads through its door `flow.port` — availability `useOccupancy(flow.port, '<entity>', { resource })`, a count `useRecordCount(flow.port, …)` — never import servicePort next to the hook. Options: `steps` (field → step), `items` (how a hit reads, per pick), `initial`, `messages`. The hook's docblock in .lane-context.md shows the exact call. This flow CHANGES a record of `terminabstimmungen`: `{...flow.picks.terminabstimmungen.select} {...flow.pick('terminabstimmungen')}` picks it, the hook prefills the form with its current values and updates THAT record — never a create step, never a list from useDashboardData. This flow CHANGES a record of `teilnehmer`: `{...flow.picks.teilnehmer.select} {...flow.pick('teilnehmer')}` picks it, the hook prefills the form with its current values and updates THAT record — never a create step, never a list from useDashboardData. Never import servicePort, useStepForm, useJourneySubmit, useRecordSearch or useDashboardData in this page — check-intents refuses a page that uses the hook and any of them.\n\n## Steps (in this order)\n1. Entwurf auswählen\n2. Vorhandene Terminvorschläge und Teilnehmer prüfen\n3. Status auf Versendet setzen\n4. Einladungsstatus der Teilnehmer setzen\n\n## Schreibliste — the ONLY writes this flow makes (the gate compares your plan steps with this list)\n- updates `terminabstimmungen`:\n    - `status`: fixed value `versendet` — set it in the plan step's values, never ask\n- updates `teilnehmer`:\n    - `einladungsstatus`: fixed value `versendet` — set it in the plan step's values, never ask\n    - `einladung_versendet_am`: derived: now() — set it in the plan step, never ask\n\n## Reads\n- `terminabstimmungen` columns titel, antwortfrist, status\n- `terminvorschlaege` columns startzeit, endzeit\n- `teilnehmer` columns vorname, nachname, email, rolle\n\n## Checks BEFORE the write (block the submit with the message when they fail)\n- custom (rule=`terminabstimmungen.antwortfrist darf nicht vor dem Versandzeitpunkt liegen`) — message: „Die Antwortfrist darf nicht vor dem Versand liegen.“\n\n## Success page\n- shows: `terminabstimmungen.status`, `terminabstimmungen.antwortfrist`\n- next flows to offer: `termin-festlegen`\n\n## Never write these — another flow or a tool owns them\n- `terminabstimmungen.titel` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.beschreibung` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.organisator_vorname` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.organisator_nachname` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.organisator_email` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.standarddauer_minuten` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.ort` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.online_meeting_link` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.zeitzone` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.antwortfrist` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.entscheidungsregel` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.finaler_terminvorschlag` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.terminabstimmung` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.startzeit` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.endzeit` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.ort_abweichend` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.meeting_link_abweichend` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.reihenfolge` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.final_gewaehlt` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.terminabstimmung` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.vorname` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.nachname` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.email` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.organisation` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.rolle` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.zugriffstoken` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.teilnahme_abgesagt` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.festgelegt_am` (owner: intent `termin-festlegen`)\n- `terminabstimmungen.entscheidungskommentar` (owner: intent `termin-festlegen`)\n- `terminabstimmungen.bestaetigung_sofort_senden` (owner: intent `termin-festlegen`)\n- `terminabstimmungen.abgesagt_am` (owner: intent `abstimmung-absagen`)\n- `terminabstimmungen.abstimmungsnummer` (owner: tool `abstimmungsnummer-vergeben`)\n- `teilnehmer.abstimmungslink` (owner: tool `abstimmungslink-erzeugen`)\n- `terminvorschlaege.anzahl_ja` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_wenn_noetig` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_nein` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_ohne_antwort` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_pflichtteilnehmer_ja` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.eignung` (owner: tool `rueckmeldungen-zaehlen`)\n- `teilnehmer.geantwortet_am` (owner: tool `antwort-beim-teilnehmer-vermerken`)\n- `terminabstimmungen.ics_datei` (owner: tool `ics-datei-erzeugen`)\n- `terminabstimmungen.ics_sequenz` (owner: tool `ics-datei-erzeugen`)\n"
+    },
+    {
+      "slug": "termin-festlegen",
+      "label": {
+        "de": "Termin festlegen",
+        "en": "Fix final date"
+      },
+      "description": "Der Organisator wählt einen Terminvorschlag aus und legt ihn verbindlich fest.",
+      "priority": "must",
+      "writes": [
+        {
+          "entity": "terminabstimmungen",
+          "op": "update",
+          "when": "always",
+          "fields": {
+            "finaler_terminvorschlag": "picked",
+            "status": "fixed:festgelegt",
+            "festgelegt_am": "derived:now",
+            "entscheidungskommentar": "user",
+            "bestaetigung_sofort_senden": "user"
+          },
+          "needs": {}
+        },
+        {
+          "entity": "terminvorschlaege",
+          "op": "update",
+          "when": "always",
+          "fields": {
+            "final_gewaehlt": "fixed:true"
+          },
+          "needs": {}
+        }
+      ],
+      "required": [],
+      "brief": "# Flow `termin-festlegen` — Termin festlegen\nDer Organisator wählt einen Terminvorschlag aus und legt ihn verbindlich fest.\n\n## Your hook — import it, never rebuild what it owns\n`import { useTerminFestlegenFlow } from '@/lib/journey/flows/TerminFestlegen';` — generated from the Schreibliste below. It OWNS the form(s), one record search per picked field (columns and filter from the plan) and the submit plan with every fixed and derived value. You compose: `flow.forms.<entity>` for <Bound>/<Field>, `{...flow.picks.<field>.select} {...flow.pick('<field>')}` (or `flow.pickMany` for a multi pick) for <EntitySelectStep>, `flow.validateStep(n)` in StepNav.onNext, `flow.submit` + `flow.formList` for SummaryStep/SuccessStep, `flow.reset()`; what the hook does not own reads through its door `flow.port` — availability `useOccupancy(flow.port, '<entity>', { resource })`, a count `useRecordCount(flow.port, …)` — never import servicePort next to the hook. Options: `steps` (field → step), `items` (how a hit reads, per pick: finaler_terminvorschlag), `initial`, `messages`. The hook's docblock in .lane-context.md shows the exact call. This flow CHANGES a record of `terminabstimmungen`: `{...flow.picks.terminabstimmungen.select} {...flow.pick('terminabstimmungen')}` picks it, the hook prefills the form with its current values and updates THAT record — never a create step, never a list from useDashboardData. This flow CHANGES a record of `terminvorschlaege`: `{...flow.picks.terminvorschlaege.select} {...flow.pick('terminvorschlaege')}` picks it, the hook prefills the form with its current values and updates THAT record — never a create step, never a list from useDashboardData. Never import servicePort, useStepForm, useJourneySubmit, useRecordSearch or useDashboardData in this page — check-intents refuses a page that uses the hook and any of them.\n\n## Steps (in this order)\n1. Abstimmung auswählen\n2. Auswertung der Terminvorschläge ansehen\n3. Terminvorschlag wählen\n4. Teilnehmer mit Nein oder ohne Rückmeldung prüfen\n5. Festlegen\n\n## Schreibliste — the ONLY writes this flow makes (the gate compares your plan steps with this list)\n- updates `terminabstimmungen`:\n    - `finaler_terminvorschlag`: from the record the user picks in this flow — **REQUIRED in this flow** (mark it required and validate it before the step advances, whatever the app's base view says): tool `ics-datei-erzeugen` → `ics_datei` cannot be built without it\n    - `status`: fixed value `festgelegt` — set it in the plan step's values, never ask\n    - `festgelegt_am`: derived: now() — set it in the plan step, never ask\n    - `entscheidungskommentar`: the user enters it (bind it through the layer: form.field/…)\n    - `bestaetigung_sofort_senden`: the user enters it (bind it through the layer: form.field/…)\n- updates `terminvorschlaege`:\n    - `final_gewaehlt`: fixed value `true` — set it in the plan step's values, never ask\n\n## Reads\n- `terminvorschlaege` columns startzeit, endzeit, anzahl_ja, anzahl_wenn_noetig, anzahl_nein, anzahl_ohne_antwort, anzahl_pflichtteilnehmer_ja, eignung\n- `rueckmeldungen` columns teilnehmer, terminvorschlag, verfuegbarkeit, kommentar\n\n## Checks BEFORE the write (block the submit with the message when they fail)\n- custom (rule=`pro Terminabstimmung nur ein Terminvorschlag mit final_gewaehlt, mindestens ein Vorschlag vorhanden`) — message: „Es darf nur einen finalen Terminvorschlag geben.“\n\n## Success page\n- shows: `terminabstimmungen.finaler_terminvorschlag`, `terminabstimmungen.festgelegt_am`\n\n## Never write these — another flow or a tool owns them\n- `terminabstimmungen.titel` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.beschreibung` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.organisator_vorname` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.organisator_nachname` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.organisator_email` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.standarddauer_minuten` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.ort` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.online_meeting_link` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.zeitzone` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.antwortfrist` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.entscheidungsregel` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.terminabstimmung` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.startzeit` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.endzeit` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.ort_abweichend` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.meeting_link_abweichend` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.reihenfolge` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.terminabstimmung` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.vorname` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.nachname` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.email` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.organisation` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.rolle` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.zugriffstoken` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.einladungsstatus` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.teilnahme_abgesagt` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.einladung_versendet_am` (owner: intent `abstimmung-versenden`)\n- `terminabstimmungen.abgesagt_am` (owner: intent `abstimmung-absagen`)\n- `terminabstimmungen.abstimmungsnummer` (owner: tool `abstimmungsnummer-vergeben`)\n- `teilnehmer.abstimmungslink` (owner: tool `abstimmungslink-erzeugen`)\n- `terminvorschlaege.anzahl_ja` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_wenn_noetig` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_nein` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_ohne_antwort` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_pflichtteilnehmer_ja` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.eignung` (owner: tool `rueckmeldungen-zaehlen`)\n- `teilnehmer.geantwortet_am` (owner: tool `antwort-beim-teilnehmer-vermerken`)\n- `terminabstimmungen.ics_datei` (owner: tool `ics-datei-erzeugen`)\n- `terminabstimmungen.ics_sequenz` (owner: tool `ics-datei-erzeugen`)\n"
+    },
+    {
+      "slug": "abstimmung-absagen",
+      "label": {
+        "de": "Abstimmung absagen",
+        "en": "Cancel poll"
+      },
+      "description": "Der Organisator sagt eine Abstimmung ab oder archiviert sie.",
+      "priority": "nice",
+      "writes": [
+        {
+          "entity": "terminabstimmungen",
+          "op": "update",
+          "when": "always",
+          "fields": {
+            "status": "fixed:abgesagt",
+            "abgesagt_am": "derived:now",
+            "entscheidungskommentar": "user"
+          },
+          "needs": {}
+        }
+      ],
+      "required": [],
+      "brief": "# Flow `abstimmung-absagen` — Abstimmung absagen\nDer Organisator sagt eine Abstimmung ab oder archiviert sie.\n\n## Your hook — import it, never rebuild what it owns\n`import { useAbstimmungAbsagenFlow } from '@/lib/journey/flows/AbstimmungAbsagen';` — generated from the Schreibliste below. It OWNS the form(s), one record search per picked field (columns and filter from the plan) and the submit plan with every fixed and derived value. You compose: `flow.forms.<entity>` for <Bound>/<Field>, `{...flow.picks.<field>.select} {...flow.pick('<field>')}` (or `flow.pickMany` for a multi pick) for <EntitySelectStep>, `flow.validateStep(n)` in StepNav.onNext, `flow.submit` + `flow.formList` for SummaryStep/SuccessStep, `flow.reset()`; what the hook does not own reads through its door `flow.port` — availability `useOccupancy(flow.port, '<entity>', { resource })`, a count `useRecordCount(flow.port, …)` — never import servicePort next to the hook. Options: `steps` (field → step), `items` (how a hit reads, per pick), `initial`, `messages`. The hook's docblock in .lane-context.md shows the exact call. This flow CHANGES a record of `terminabstimmungen`: `{...flow.picks.terminabstimmungen.select} {...flow.pick('terminabstimmungen')}` picks it, the hook prefills the form with its current values and updates THAT record — never a create step, never a list from useDashboardData. Never import servicePort, useStepForm, useJourneySubmit, useRecordSearch or useDashboardData in this page — check-intents refuses a page that uses the hook and any of them.\n\n## Steps (in this order)\n1. Abstimmung auswählen\n2. Absagegrund erfassen\n3. Absagen bestätigen\n\n## Schreibliste — the ONLY writes this flow makes (the gate compares your plan steps with this list)\n- updates `terminabstimmungen`:\n    - `status`: fixed value `abgesagt` — set it in the plan step's values, never ask\n    - `abgesagt_am`: derived: now() — set it in the plan step, never ask\n    - `entscheidungskommentar`: the user enters it (bind it through the layer: form.field/…)\n\n## Reads\n- `terminabstimmungen` columns titel, status, antwortfrist\n\n## Success page\n- shows: `terminabstimmungen.status`, `terminabstimmungen.abgesagt_am`\n\n## Never write these — another flow or a tool owns them\n- `terminabstimmungen.titel` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.beschreibung` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.organisator_vorname` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.organisator_nachname` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.organisator_email` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.standarddauer_minuten` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.ort` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.online_meeting_link` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.zeitzone` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.antwortfrist` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.entscheidungsregel` (owner: intent `terminabstimmung-anlegen`)\n- `terminabstimmungen.finaler_terminvorschlag` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.terminabstimmung` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.startzeit` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.endzeit` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.ort_abweichend` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.meeting_link_abweichend` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.reihenfolge` (owner: intent `terminabstimmung-anlegen`)\n- `terminvorschlaege.final_gewaehlt` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.terminabstimmung` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.vorname` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.nachname` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.email` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.organisation` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.rolle` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.zugriffstoken` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.einladungsstatus` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.teilnahme_abgesagt` (owner: intent `terminabstimmung-anlegen`)\n- `teilnehmer.einladung_versendet_am` (owner: intent `abstimmung-versenden`)\n- `terminabstimmungen.festgelegt_am` (owner: intent `termin-festlegen`)\n- `terminabstimmungen.bestaetigung_sofort_senden` (owner: intent `termin-festlegen`)\n- `terminabstimmungen.abstimmungsnummer` (owner: tool `abstimmungsnummer-vergeben`)\n- `teilnehmer.abstimmungslink` (owner: tool `abstimmungslink-erzeugen`)\n- `terminvorschlaege.anzahl_ja` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_wenn_noetig` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_nein` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_ohne_antwort` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.anzahl_pflichtteilnehmer_ja` (owner: tool `rueckmeldungen-zaehlen`)\n- `terminvorschlaege.eignung` (owner: tool `rueckmeldungen-zaehlen`)\n- `teilnehmer.geantwortet_am` (owner: tool `antwort-beim-teilnehmer-vermerken`)\n- `terminabstimmungen.ics_datei` (owner: tool `ics-datei-erzeugen`)\n- `terminabstimmungen.ics_sequenz` (owner: tool `ics-datei-erzeugen`)\n"
+    }
+  ],
+  "public_pages": [
+    {
+      "slug": "abstimmung-teilnehmen",
+      "purpose": "Teilnehmer sehen die Terminvorschläge ihrer Abstimmung (ohne Rückmeldungen anderer Teilnehmer) und geben je Option Ja, Wenn nötig oder Nein an, optional mit Kommentar. Sie können außerdem einen alternativen Terminvorschlag einreichen. Die Seite legt nur neue Rückmeldungen und Alternativen an und ändert keine bestehenden. Das Ändern einer bereits gespeicherten Antwort bleibt eine offene Frage.",
+      "publish": false,
+      "lists": [
+        {
+          "entity": "terminvorschlaege",
+          "columns": [
+            "startzeit",
+            "endzeit",
+            "ort_abweichend",
+            "meeting_link_abweichend",
+            "reihenfolge"
+          ],
+          "filter": null,
+          "max_records": null
+        }
+      ],
+      "creates": [
+        {
+          "entity": "rueckmeldungen",
+          "fields": {
+            "terminabstimmung": "picked",
+            "terminvorschlag": "picked",
+            "teilnehmer": "picked",
+            "kommentar": "user",
+            "antwortzeitpunkt": "derived:now",
+            "letzte_aenderung": "derived:now"
+          },
+          "fixed": {
+            "verfuegbarkeit": "ja"
+          }
+        },
+        {
+          "entity": "alternative_terminvorschlaege",
+          "fields": {
+            "terminabstimmung": "picked",
+            "vorgeschlagen_von": "picked",
+            "startzeit": "user",
+            "endzeit": "user",
+            "kommentar": "user"
+          },
+          "fixed": {
+            "status": "neu"
+          }
+        }
+      ],
+      "brief": "# Public page `abstimmung-teilnehmen`\nTeilnehmer sehen die Terminvorschläge ihrer Abstimmung (ohne Rückmeldungen anderer Teilnehmer) und geben je Option Ja, Wenn nötig oder Nein an, optional mit Kommentar. Sie können außerdem einen alternativen Terminvorschlag einreichen. Die Seite legt nur neue Rückmeldungen und Alternativen an und ändert keine bestehenden. Das Ändern einer bereits gespeicherten Antwort bleibt eine offene Frage.\n\n## Lists (declare exactly these in the surface)\n- `terminvorschlaege`: columns `startzeit`, `endzeit`, `ort_abweichend`, `meeting_link_abweichend`, `reihenfolge`\n\n## Creates (declare exactly these in the surface)\n- `rueckmeldungen`: visitor fields `terminabstimmung`, `terminvorschlag`, `teilnehmer`, `kommentar`, `antwortzeitpunkt`, `letzte_aenderung`; preset_fields {\"verfuegbarkeit\": \"ja\"}\n- `alternative_terminvorschlaege`: visitor fields `terminabstimmung`, `vorgeschlagen_von`, `startzeit`, `endzeit`, `kommentar`; preset_fields {\"status\": \"neu\"}\n\n## Availability — mechanical, write nothing for it\nA picker (`useRecordSearch`) never offers a record another record already takes (a booked slot) — the layer leaves it out. To SHOW booked periods, call `useOccupancy(port, '<entity>')` and hand `blocked` to AvailabilityRangePicker; the integration gives the page exactly that read (dates or the reference, never who booked). Never declare a list of bookings with names or contacts to work availability out yourself.\n\nPublish: no (draft — the owner publishes)\n"
+    }
+  ],
+  "tools": [
+    {
+      "id": "abstimmungsnummer-vergeben",
+      "purpose": "Vergibt beim Anlegen einer Terminabstimmung die lesbare Abstimmungsnummer. Der Anlege-Ablauf lässt das Feld aus."
+    },
+    {
+      "id": "abstimmungslink-erzeugen",
+      "purpose": "Baut aus dem Zugriffstoken den persönlichen Abstimmungslink des Teilnehmers."
+    },
+    {
+      "id": "rueckmeldungen-zaehlen",
+      "purpose": "Zählt bei jeder neuen oder geänderten Rückmeldung die Antworten des betroffenen Terminvorschlags neu und bewertet die Eignung."
+    },
+    {
+      "id": "antwort-beim-teilnehmer-vermerken",
+      "purpose": "Setzt den Teilnehmer nach seiner Rückmeldung auf Geantwortet und trägt den Zeitpunkt ein."
+    },
+    {
+      "id": "abstimmung-in-abstimmung-setzen",
+      "purpose": "Setzt eine versendete Abstimmung bei der ersten Rückmeldung auf In Abstimmung. Prüft im Code, dass der Status Versendet ist."
+    },
+    {
+      "id": "frist-ablaufen-lassen",
+      "purpose": "Setzt offene Abstimmungen, deren Antwortfrist vorbei ist, auf Abgelaufen."
+    },
+    {
+      "id": "ics-datei-erzeugen",
+      "purpose": "Erzeugt für festgelegte Abstimmungen die .ics-Kalenderdatei und erhöht bei Änderung die Versionsnummer. Prüft im Code, dass der Status Festgelegt ist und ein finaler Termin vorliegt."
+    },
+    {
+      "id": "ausstehende-antworten-melden",
+      "purpose": "Sendet dem Organisator eine tägliche Sammelmail mit den Teilnehmern ohne Rückmeldung bei offenen Abstimmungen. Keine Mails an Teilnehmer."
+    },
+    {
+      "id": "aufbewahrung-archivieren",
+      "purpose": "Archiviert abgeschlossene Abstimmungen, deren Aufbewahrungsfrist vorbei ist."
+    }
+  ],
+  "covered_by_platform": [
+    {
+      "wish": "Terminabstimmungen, Vorschläge und Teilnehmer erstellen, bearbeiten und löschen",
+      "feature": "record_form"
+    },
+    {
+      "wish": "Dashboard-Bereiche Entwürfe, Offene, Abgelaufene, Festgelegte und Archiv",
+      "feature": "list_page"
+    },
+    {
+      "wish": "Suche und Filter in Abstimmungen und Teilnehmern",
+      "feature": "search_filter"
+    },
+    {
+      "wish": "Auswertung der Antworten je Option oder Teilnehmer als einfache Zählung",
+      "feature": "distribution_view"
+    },
+    {
+      "wish": "Rollen Organisator und interne Nutzer mit Zugriff auf die Gesamtauswertung",
+      "feature": "user_roles"
+    },
+    {
+      "wish": "Kalenderdatei als Anhang am Datensatz ablegen und Dokumente anhängen",
+      "feature": "record_attachments"
+    },
+    {
+      "wish": "Teilnehmerliste oder Antworten als Tabelle/CSV exportieren",
+      "feature": "csv_json_export"
+    },
+    {
+      "wish": "Änderungen nachvollziehen",
+      "feature": "record_history"
+    }
+  ],
+  "ownership": {
+    "terminabstimmungen": {
+      "titel": "intent:terminabstimmung-anlegen",
+      "beschreibung": "intent:terminabstimmung-anlegen",
+      "organisator_vorname": "intent:terminabstimmung-anlegen",
+      "organisator_nachname": "intent:terminabstimmung-anlegen",
+      "organisator_email": "intent:terminabstimmung-anlegen",
+      "standarddauer_minuten": "intent:terminabstimmung-anlegen",
+      "ort": "intent:terminabstimmung-anlegen",
+      "online_meeting_link": "intent:terminabstimmung-anlegen",
+      "zeitzone": "intent:terminabstimmung-anlegen",
+      "antwortfrist": "intent:terminabstimmung-anlegen",
+      "entscheidungsregel": "intent:terminabstimmung-anlegen",
+      "status": "tool:aufbewahrung-archivieren",
+      "finaler_terminvorschlag": "intent:termin-festlegen",
+      "festgelegt_am": "intent:termin-festlegen",
+      "entscheidungskommentar": "intent:abstimmung-absagen",
+      "bestaetigung_sofort_senden": "intent:termin-festlegen",
+      "abgesagt_am": "intent:abstimmung-absagen",
+      "abstimmungsnummer": "tool:abstimmungsnummer-vergeben",
+      "ics_datei": "tool:ics-datei-erzeugen",
+      "ics_sequenz": "tool:ics-datei-erzeugen"
+    },
+    "terminvorschlaege": {
+      "terminabstimmung": "intent:terminabstimmung-anlegen",
+      "startzeit": "intent:terminabstimmung-anlegen",
+      "endzeit": "intent:terminabstimmung-anlegen",
+      "ort_abweichend": "intent:terminabstimmung-anlegen",
+      "meeting_link_abweichend": "intent:terminabstimmung-anlegen",
+      "reihenfolge": "intent:terminabstimmung-anlegen",
+      "final_gewaehlt": "intent:termin-festlegen",
+      "anzahl_ja": "tool:rueckmeldungen-zaehlen",
+      "anzahl_wenn_noetig": "tool:rueckmeldungen-zaehlen",
+      "anzahl_nein": "tool:rueckmeldungen-zaehlen",
+      "anzahl_ohne_antwort": "tool:rueckmeldungen-zaehlen",
+      "anzahl_pflichtteilnehmer_ja": "tool:rueckmeldungen-zaehlen",
+      "eignung": "tool:rueckmeldungen-zaehlen"
+    },
+    "teilnehmer": {
+      "terminabstimmung": "intent:terminabstimmung-anlegen",
+      "vorname": "intent:terminabstimmung-anlegen",
+      "nachname": "intent:terminabstimmung-anlegen",
+      "email": "intent:terminabstimmung-anlegen",
+      "organisation": "intent:terminabstimmung-anlegen",
+      "rolle": "intent:terminabstimmung-anlegen",
+      "zugriffstoken": "intent:terminabstimmung-anlegen",
+      "einladungsstatus": "tool:antwort-beim-teilnehmer-vermerken",
+      "teilnahme_abgesagt": "intent:terminabstimmung-anlegen",
+      "einladung_versendet_am": "intent:abstimmung-versenden",
+      "abstimmungslink": "tool:abstimmungslink-erzeugen",
+      "geantwortet_am": "tool:antwort-beim-teilnehmer-vermerken"
+    }
+  },
+  "dashboard": {
+    "focus": [
+      "Offene Abstimmungen mit nahender Antwortfrist",
+      "Abstimmungen mit abgelaufener Frist",
+      "Entwürfe, die noch versendet werden müssen",
+      "Festgelegte Termine",
+      "Teilnehmer ohne Rückmeldung"
+    ],
+    "hints": [
+      "Status der Terminabstimmung als Gruppierung nutzen",
+      "Antwortfrist und Anzahl ausstehender Rückmeldungen prominent zeigen",
+      "Finalen Termin bei festgelegten Abstimmungen anzeigen"
+    ],
+    "writes": [],
+    "wishes": []
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "pages": {
+    "en": {
+      " · {0} ausstehend": " · {0} pending",
+      "Ablauf geöffnet — bitte dort bestätigen": "Workflow opened — please confirm there",
+      "Alle Abstimmungen sind auf dem aktuellen Stand.": "All polls are up to date.",
+      "Alle eingeladenen Teilnehmer haben geantwortet.": "All invited participants have responded.",
+      "Bei {0} ist die Frist abgelaufen — Zeit, einen Termin festzulegen.": "The deadline for {0} has passed — time to set a date.",
+      "Bei „{0}“ fehlt noch die Antwort von {1}.": "For \"{0}\", the response from {1} is still missing.",
+      "Bitte im Ablauf bestätigen": "Please confirm in the workflow",
+      "Dieser Status wird im Ablauf oder in der Detailansicht gesetzt": "This status is set in the workflow or in the detail view",
+      "Einladung versenden": "Send invitation",
+      "Erste Terminabstimmung anlegen": "Create first scheduling poll",
+      "Frist in 3 Tagen": "Deadline in 3 days",
+      "Frist naht": "Deadline approaching",
+      "Frist {0}": "Deadline {0}",
+      "Frist {0} · {1} von {2} ohne Antwort": "Deadline {0} · {1} of {2} no response",
+      "Keine Frist in den nächsten 3 Tagen — nächster Termin: {0}": "No deadline in the next 3 days — next appointment: {0}",
+      "Keine Frist in den nächsten 3 Tagen.": "No deadline in the next 3 days.",
+      "Lege deine erste Terminabstimmung an und lade Teilnehmer ein.": "Create your first scheduling poll and invite participants.",
+      "Neue Terminabstimmung": "New scheduling poll",
+      "Nicht eingeladen": "Not invited",
+      "Noch keine Terminabstimmung. Lege Terminvorschläge an, lade Teilnehmer ein und lege danach den finalen Termin fest.": "No scheduling polls yet. Create date proposals, invite participants, and then set the final date.",
+      "Nächster Termin": "Next appointment",
+      "Nächster Termin: {0} am {1}.": "Next appointment: {0} on {1}.",
+      "Ohne Rückmeldung": "No response",
+      "Ohne Titel": "Untitled",
+      "Rücklaufquote": "Response rate",
+      "Termin festlegen": "Set date",
+      "Termin: {0}": "Date: {0}",
+      "Vorschläge: {0} · Teilnehmer: {1}": "Proposals: {0} · Participants: {1}",
+      "Wartet": "Waiting",
+      "Öffnen": "Open",
+      "— Antwortfrist abgelaufen ({0}), noch kein Termin festgelegt.": "— Response deadline passed ({0}), no date set yet."
+    }
+  },
+  "v": 1
+}

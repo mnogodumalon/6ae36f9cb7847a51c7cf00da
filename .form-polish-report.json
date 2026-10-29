@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "Terminabstimmungen": {
+      "placeholders_set": 19,
+      "defaults_keys": [
+        "status",
+        "antwortfrist",
+        "standarddauer_minuten",
+        "zeitzone"
+      ],
+      "computed_keys": [],
+      "reason": "Keine Formel, da kein Datumspaar und keine Preisspalte vorhanden ist; die Zählwerte des Terminvorschlags ergeben keine sinnvolle Summe."
+    },
+    "Terminvorschläge": {
+      "placeholders_set": 11,
+      "defaults_keys": [
+        "startzeit",
+        "reihenfolge",
+        "anzahl_ja",
+        "anzahl_wenn_noetig",
+        "anzahl_nein",
+        "anzahl_ohne_antwort",
+        "anzahl_pflichtteilnehmer_ja",
+        "final_gewaehlt"
+      ],
+      "computed_keys": [
+        "_termin_dauer_stunden"
+      ],
+      "reason": "Startzeit und Endzeit bilden ein Paar, daher wird die Dauer in Stunden als virtueller Wert berechnet; die Anzahlfelder sind Zähler ohne Formel."
+    },
+    "Teilnehmer": {
+      "placeholders_set": 12,
+      "defaults_keys": [
+        "einladungsstatus"
+      ],
+      "computed_keys": [],
+      "reason": "Keine Formeln, da es sich um Stammdaten ohne numerische Berechnungskette handelt; die Terminabstimmung-Zahlenfelder sind für Teilnehmer nicht sinnvoll verrechenbar."
+    },
+    "Rückmeldungen": {
+      "placeholders_set": 6,
+      "defaults_keys": [
+        "antwortzeitpunkt",
+        "letzte_aenderung"
+      ],
+      "computed_keys": [],
+      "reason": "Keine Formeln, da die Rückmeldung nur Auswahl, Zeitstempel und Kommentar enthält und keine numerische Berechnung sinnvoll ist."
+    },
+    "Alternative Terminvorschläge": {
+      "placeholders_set": 5,
+      "defaults_keys": [
+        "startzeit",
+        "status"
+      ],
+      "computed_keys": [
+        "_vorschlag_dauer_minuten"
+      ],
+      "reason": "Startzeit und Endzeit bilden ein Paar, daher wird die Dauer in Minuten als virtuelle Summenzeile berechnet; es gibt kein reales Dauerfeld."
+    }
+  }
+}
