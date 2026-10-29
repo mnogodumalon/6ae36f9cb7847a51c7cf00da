@@ -20,6 +20,7 @@
 import type { ComponentType } from 'react';
 
 // <custom:intent-imports>
+import { IconCalendarPlus, IconSend, IconCalendarCheck, IconCalendarOff } from '@tabler/icons-react';
 // </custom:intent-imports>
 
 export interface IntentLink {
@@ -42,6 +43,10 @@ export interface IntentLink {
 
 export const INTENTS: IntentLink[] = [
   // <custom:intents>
+  { path: '/intents/terminabstimmung-anlegen', label: { de: 'Terminabstimmung anlegen', en: 'Create scheduling poll' }, icon: IconCalendarPlus, description: 'Der Organisator legt eine Terminabstimmung mit Terminvorschlägen und Teilnehmern in einem Zug an.' },
+  { path: '/intents/abstimmung-versenden', label: { de: 'Abstimmung versenden', en: 'Send poll' }, icon: IconSend, description: 'Der Organisator versendet eine Abstimmung, sobald mindestens ein Terminvorschlag und ein Teilnehmer vorhanden sind.' },
+  { path: '/intents/termin-festlegen', label: { de: 'Termin festlegen', en: 'Fix final date' }, icon: IconCalendarCheck, description: 'Der Organisator wählt einen Terminvorschlag aus und legt ihn verbindlich fest.' },
+  { path: '/intents/abstimmung-absagen', label: { de: 'Abstimmung absagen', en: 'Cancel poll' }, icon: IconCalendarOff, description: 'Der Organisator sagt eine Abstimmung ab oder archiviert sie.' },
   // </custom:intents>
 ];
 
@@ -52,7 +57,7 @@ export const INTENTS: IntentLink[] = [
  * purpose — a scaffold update resets it to false (self-healing if Phase 2
  * never ran).
  */
-export const INTENTS_PENDING = true;
+export const INTENTS_PENDING = false;
 
 /**
  * When the Phase-1 bundle was deployed (ISO, set by the service together with

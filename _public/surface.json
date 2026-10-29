@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "slug": "abstimmung-teilnehmen",
+      "component": "AbstimmungTeilnehmen",
+      "title": "An Terminabstimmung teilnehmen",
+      "link_param": {
+        "name": "abstimmung",
+        "entity": "terminvorschlaege",
+        "label_field": "startzeit"
+      },
+      "endpoints": [
+        {
+          "entity": "terminvorschlaege",
+          "op": "list",
+          "fields": [
+            "startzeit",
+            "endzeit",
+            "ort_abweichend",
+            "meeting_link_abweichend",
+            "reihenfolge"
+          ],
+          "scope_description": "zeigt alle Terminvorschläge mit Zeit, Ort und Meeting-Link, ohne Rückmeldungen anderer Teilnehmer",
+          "max_records": 200
+        },
+        {
+          "entity": "rueckmeldungen",
+          "op": "create",
+          "fields": [
+            "terminabstimmung",
+            "terminvorschlag",
+            "teilnehmer",
+            "kommentar",
+            "antwortzeitpunkt",
+            "letzte_aenderung"
+          ],
+          "preset_fields": {
+            "verfuegbarkeit": "ja"
+          }
+        },
+        {
+          "entity": "alternative_terminvorschlaege",
+          "op": "create",
+          "fields": [
+            "terminabstimmung",
+            "vorgeschlagen_von",
+            "startzeit",
+            "endzeit",
+            "kommentar"
+          ],
+          "preset_fields": {
+            "status": "neu"
+          }
+        }
+      ]
+    }
+  ]
+}
